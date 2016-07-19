@@ -1,9 +1,19 @@
-from bokeh.sampledata import us_states, us_counties, unemployment
-from bokeh.plotting import figure, show, output_file
+from bokeh.models import HoverTool
+from bokeh.sampledata import us_states
+from bokeh.plotting import figure, show, output_file, ColumnDataSource
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+def rgb_to_hex(rgb):
+    arr=np.round(255*np.array(list(rgb[:3])))
+    return '#%02x%02x%02x' % tuple(arr)
 
 us_states = us_states.data.copy()
-us_counties = us_counties.data.copy()
-unemployment = unemployment.data
+loan_defs = pd.read_excel("data/peps300.xlsx")
+loan_defs['State']=loan_defs['State'].apply(lambda x: x.lower())
+
+blues_grad = plt.get_cmap('Blues')
 
 del us_states["HI"]
 del us_states["AK"]
@@ -11,30 +21,41 @@ del us_states["AK"]
 state_xs = [us_states[code]["lons"] for code in us_states]
 state_ys = [us_states[code]["lats"] for code in us_states]
 
-county_xs=[us_counties[code]["lons"] for code in us_counties if us_counties[code]["state"] not in ["ak", "hi", "pr", "gu", "vi", "mp", "as"]]
-county_ys=[us_counties[code]["lats"] for code in us_counties if us_counties[code]["state"] not in ["ak", "hi", "pr", "gu", "vi", "mp", "as"]]
+state_colors = []
+sld_rate={}
 
-colors = ["#F1EEF6", "#D4B9DA", "#C994C7", "#DF65B0", "#DD1C77", "#980043"]
+for state_key in us_states:
+    sld_rate[state_key] = loan_defs[loan_defs['State'] == state_key.lower()]['Num 1'].sum() / loan_defs[loan_defs['State'] == state_key.lower()]['Denom 1'].sum()
 
-county_colors = []
-for county_id in us_counties:
-    if us_counties[county_id]["state"] in ["ak", "hi", "pr", "gu", "vi", "mp", "as"]:
-        continue
-    try:
-        rate = unemployment[county_id]
-        idx = min(int(rate/2), 5)
-        county_colors.append(colors[idx])
-    except KeyError:
-        county_colors.append("black")
+sld_min, sld_max=np.min(sld_rate.values()), np.max(sld_rate.values())
 
-output_file("choropleth.html", title="choropleth.py example")
+for state_key in us_states:
+    col_idx=(sld_rate[state_key]-sld_min)/(sld_max-sld_min)
+    state_colors.append(rgb_to_hex(blues_grad(col_idx)))
 
-p = figure(title="US Unemployment 2009", toolbar_location="left",
+
+state_keys=us_states.keys()
+state_sld_rates=np.round(np.array(sld_rate.values())*100)
+
+source = ColumnDataSource(data=dict(
+    state_key=state_keys,
+    sld_rate=state_sld_rates,
+))
+
+TOOLS="pan,wheel_zoom,box_zoom,reset,hover,save"
+
+p = figure(title="Student Loan Defaults - 2012", toolbar_location="left", tools=TOOLS,
     plot_width=1100, plot_height=700)
 
-p.patches(county_xs, county_ys, fill_color=county_colors, fill_alpha=0.7,
-    line_color="white", line_width=0.5)
-p.patches(state_xs, state_ys, fill_alpha=0.0,
-    line_color="#884444", line_width=2)
+p.patches(state_xs, state_ys, fill_color=state_colors, fill_alpha=0.8,
+    line_color="navy", line_width=1, source=source)
 
+hover=p.select_one(HoverTool)
+hover.point_policy="follow_mouse"
+hover.tooltips=[
+    ("State", "@state_key"),
+    ("Default rate", "@sld_rate%")
+]
+
+output_file("sld_rate_map.html", title="Student Default Rates")
 show(p)
