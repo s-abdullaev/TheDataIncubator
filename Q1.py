@@ -32,7 +32,7 @@ class Knight(object):
     
 if __name__=="__main__":
     T = 1024
-    modulo=10
+    modulo=1024
     tests = 10000
 
     np.random.seed(123)
@@ -46,8 +46,8 @@ if __name__=="__main__":
     print '%.8f, %.8f' % (np.mean(Q1sols), np.std(Q1sols))
     
     #conditional probability
-    count29=sum(1 for x in Q1sols if x % 29 == 0)
-    count29n23=sum(1 for x in Q1sols if x % 23 == 0 and x % 29 == 0)
+    countA=sum(1 for x in Q1sols if x % 29 == 0)
+    countAnB=sum(1 for x in Q1sols if x % 23 == 0 and x % 29 == 0)
     
-    print '%d, %d, %.10f' % (count29, count29n23, count29n23/count29)
+    print '%d, %d, %.10f' % (countA, countAnB, countAnB/countA)
     

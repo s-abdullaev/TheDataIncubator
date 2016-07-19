@@ -23,9 +23,9 @@ Additional Info:
 
 Along working in this project, I will need to specify and collect following data:
 
-- Student's academic, professional and social background along with other personal details prior to entering the higher education institution, applying for the loan; 
-- Conditions in student loan contracts, principal amounts, repayment periods, time and effort needed to succeed, success rates
-- Universities' profiles, rankings, admissions to different programmes, acceptence rates, demographic.
+- Students: Their academic, professional and social background along with other personal details prior to entering the higher education institution, applying for the loan;
+- Loan-Providers: Their financial performance, conditions in loan contracts, principal amounts, repayment periods, time and effort needed to obtain a loan, success rates
+- Universities: Their profiles, rankings, admissions to different programmes, acceptence rates, demographic.
 
 ## 2. Data Cleaning
 
@@ -39,6 +39,10 @@ In this phase, I will try to visualise various aspects of the collected and pre-
 
 In this phase, I will use machine learning such as regression, classification and clusting algorithms to find previously unseen relationships in the data. I will use 80% of the initial data to train the predictive models, and 20% to test the accuracy rate. I am yet to decide which particular mechine learning algorithm I will use to mine the data, but I am sure this becomes obvious after collecting enough data and accomplishing the initial explorative analysis.
 
-## 5. Presentation 
+## 5. Multi-agent Simulation
 
-The results of my research will be published online and presented to panel of hiring managers. 
+With knowledge obtained from previous two analysis, I can design an agent-based model to simulate a virtual world where students, universities and loan providing agencies may interact together and reach certain outcomes. I would probabily use *stable matching algorithm* to facilitate the interaction between agents. For example, every student will have an ordered list of universities and loan providing agencies which he is going to contact. and each university also has the ordered list of students it wishes to accept, and each loan giving agency has the ordered list of students it wishes to provide loan. The simulation will construct such ordered lists for students, universities and loan-providers based on certain parameters and run stable matching algorithm. Once the matching for all entities has been determined, the default events will be raised according to the certain characteristics of students, universities and loan-providers, and most importantly combinations between them. These characteristics will be obtained as a result of previous two analysis of data.
+
+## 6. Presentation
+
+The results of my research will be published online and the source code will be uploaded to github. I will also present it to the panel of hiring managers and other fellow students.
