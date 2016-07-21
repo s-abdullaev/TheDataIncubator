@@ -1,68 +1,100 @@
-from bokeh.models import HoverTool
-from bokeh.sampledata import us_states
-from bokeh.plotting import figure, show, output_file, ColumnDataSource
+from bokeh.charts import Bar, show, output_file, defaults
+from bokeh.charts.attributes import CatAttr
+from bokeh.models import PrintfTickFormatter
+from bokeh.models.widgets import Panel, Tabs
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 
-def rgb_to_hex(rgb):
-    arr=np.round(255*np.array(list(rgb[:3])))
-    return '#%02x%02x%02x' % tuple(arr)
-
-us_states = us_states.data.copy()
 loan_defs = pd.read_excel("data/peps300.xlsx")
-loan_defs['State']=loan_defs['State'].apply(lambda x: x.lower())
+output_file("chart_2.html", title="Student Loan Defaults")
 
-blues_grad = plt.get_cmap('Blues')
+#pre-processing the data
 
-del us_states["HI"]
-del us_states["AK"]
+programme_length_cats={
+    0: "0-Short-Term (300-599 hours)",
+    1: "1-Graduate/Professional (>= 300 hours)",
+    2: "2-Non-Degree (600-899 hours)",
+    3:"3-Non-Degree 1 Year (900-1799 hours)",
+    4:"4-Non-Degree 2 Years (1800-2699 hours)",
+    5:"5-Associate's Degree",
+    6:"6-Bachelor's Degree",
+    7:"7-First Professional Degree",
+    8:"8-Master's Degree or Doctor's Degree",
+    9:'9-Professional Certification',
+    10:'10-Undergraduate (Previous Degree Required)',
+    11:'11- Non-Degree 3 Plus Years (>= 2700 hours)',
+    12:'12-Two-Year Transfer'
+}
 
-state_xs = [us_states[code]["lons"] for code in us_states]
-state_ys = [us_states[code]["lats"] for code in us_states]
+sch_type_cats={
+    1: '1-Public',
+    2: '2-Private, Nonprofit',
+    3: '3-Proprietary',
+    5: '5-Foreign Public',
+    6: '6-Foreign Private',
+    7: '7-Foreign For-Profit'
+}
 
-state_colors = []
-sld_rate={}
-num1={}
-denom1={}
-for state_key in us_states:
-    num1[state_key]=loan_defs[loan_defs['State'] == state_key.lower()]['Num 1'].sum()
-    denom1[state_key]=loan_defs[loan_defs['State'] == state_key.lower()]['Denom 1'].sum()
-    sld_rate[state_key] = num1[state_key]/denom1[state_key]
+ethnic_code_cats={
+    1:'1-Native American',
+    2:'2-HBCU',
+    3:'3-Hispanic',
+    4:'4-Traditionally Black College',
+    5:'5-Ethnicity Not Reported'
+}
 
-sld_min, sld_max=np.min(sld_rate.values()), np.max(sld_rate.values())
+loan_defs.fillna(value=0, inplace=True)
+loan_defs["Program Length"]=loan_defs["Program Length"].map(programme_length_cats)
+loan_defs["Program Length"]=loan_defs["Program Length"].astype('category')
 
-for state_key in us_states:
-    col_idx=(sld_rate[state_key]-sld_min)/(sld_max-sld_min)
-    state_colors.append(rgb_to_hex(blues_grad(col_idx)))
+loan_defs["Sch Type"]=loan_defs["Sch Type"].map(sch_type_cats)
+loan_defs["Sch Type"]=loan_defs["Sch Type"].astype('category')
+
+loan_defs["Ethnic Code"]=loan_defs["Ethnic Code"].map(ethnic_code_cats)
+loan_defs["Ethnic Code"]=loan_defs["Ethnic Code"].astype('category')
+
+tbl1=pd.melt(loan_defs, id_vars='OPEID', value_vars=['Year 1', 'Year 2', 'Year 3'], value_name="Year")
+tbl2=pd.melt(loan_defs, id_vars='OPEID', value_vars=['Num 1', 'Num 2', 'Num 3'], value_name="Numerator")
+tbl3=pd.melt(loan_defs, id_vars='OPEID', value_vars=['Denom 1', 'Denom 2', 'Denom 3'], value_name="Denominator")
+
+tbl1['Numerator']=tbl2['Numerator']
+tbl1['Denominator']=tbl3['Denominator']
+
+final_tbl=tbl1.merge(loan_defs.loc[:,['OPEID', 'Name', 'Address','City','State','Zip Code','Zip Ext','Program Length','Sch Type', 'Ethnic Code']], on='OPEID')
 
 
-state_keys=us_states.keys()
-state_sld_rates=np.round(np.array(sld_rate.values())*100)
+defaults.width=1000
+defaults.height=800
 
-source = ColumnDataSource(data=dict(
-    state_key=state_keys,
-    sld_rate=state_sld_rates,
-    students_failed=num1.values(),
-    students_entered=denom1.values()
-))
+#plot grid by different parameters
+df=final_tbl.groupby(['Program Length']).sum()
+df=df.reindex(programme_length_cats.values()).fillna(value=0)
+p1=Bar(df, values='Numerator', title='Student Defaults by Program Length', legend=None, label=CatAttr(sort=False))
+p1.xaxis.major_label_orientation=np.pi/2
+p1.xaxis.axis_label="Program Length"
+p1.yaxis.axis_label="Total Defaults"
+p1.yaxis[0].formatter = PrintfTickFormatter(format="%d")
+tab1=Panel(child=p1, title="by Program Length")
 
-TOOLS="pan,wheel_zoom,box_zoom,reset,hover,save"
+df=final_tbl.groupby(['Sch Type']).sum()
+df=df.reindex(sch_type_cats.values()).fillna(value=0)
+p2=Bar(df, values='Numerator', title='Student Defaults by Scheme Type', legend=None, label=CatAttr(sort=False))
+p2.xaxis.major_label_orientation=np.pi/2
+p2.xaxis.axis_label="Scheme"
+p2.yaxis.axis_label="Total Defaults"
+p2.yaxis[0].formatter = PrintfTickFormatter(format="%d")
+tab2=Panel(child=p2, title="by Scheme Type")
 
-p = figure(title="Student Loan Defaults - 2012", toolbar_location="left", tools=TOOLS,
-    plot_width=1100, plot_height=700)
+df=final_tbl.groupby(['Ethnic Code']).sum()
+df=df.reindex(ethnic_code_cats.values()).fillna(value=0)
+p3=Bar(df, values='Numerator', title='Student Defaults by Ethnic Code', legend=None, label=CatAttr(sort=False))
+p3.xaxis.major_label_orientation=np.pi/2
+p3.xaxis.axis_label="Ethnic Code"
+p3.yaxis.axis_label="Total Defaults"
+p3.yaxis[0].formatter = PrintfTickFormatter(format="%d")
+tab3=Panel(child=p3, title="by Ethnic Code")
 
-p.patches(state_xs, state_ys, fill_color=state_colors, fill_alpha=0.8,
-    line_color="navy", line_width=1, source=source)
+tabs=Tabs(tabs=[tab1,tab2, tab3])
 
-hover=p.select_one(HoverTool)
-hover.point_policy="follow_mouse"
-hover.tooltips=[
-    ("State", "@state_key"),
-    ("Student Default Rate", "@sld_rate%"),
-    ("Students Entered Repayment", "@students_entered"),
-    ("Students Failed Repayment in 3 years", "@students_failed")
-]
+show(tabs)
 
-output_file("sld_rate_map.html", title="Student Default Rates")
-show(p)
